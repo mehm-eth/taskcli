@@ -1,0 +1,312 @@
+TaskCLI: A Command-Line Task Manager
+TaskCLI is an open-source command-line tool for managing tasks. It allows users to add, list, complete, and delete tasks, with data stored in a JSON file. This project is designed to be simple, extensible, and compatible with the Tea Protocol for decentralized OSS rewards.
+
+Repository Structure
+text
+
+Kopyala
+taskcli/
+├── src/
+│   └── taskcli/
+│       ├── __init__.py
+│       └── cli.py
+├── tests/
+│   └── test_cli.py
+├── .gitignore
+├── LICENSE
+├── README.md
+├── pyproject.toml
+└── tea.yaml
+Setup Instructions
+Clone the Repository:
+bash
+
+Kopyala
+git clone https://github.com/your-username/taskcli.git
+cd taskcli
+Install Dependencies:
+Requires Python 3.8+.
+Install dependencies using Poetry:
+bash
+
+Kopyala
+pip install poetry
+poetry install
+Run the CLI:
+bash
+
+Kopyala
+poetry run taskcli --help
+Usage
+Add a task: taskcli add "Buy groceries"
+List tasks: taskcli list
+Complete a task: taskcli complete 1
+Delete a task: taskcli delete 1
+Development
+Run tests: poetry run pytest
+Format code: poetry run black .
+Lint code: poetry run flake8
+Tea Protocol Registration
+Create a GitHub Repository:
+Initialize a new public repository on GitHub named taskcli.
+Push the project files to the repository.
+Register on Tea Protocol:
+Visit app.tea.xyz and sign in with your GitHub account.
+Go to “My OSS Projects” and select taskcli from your repositories.
+Download the generated tea.yaml file and commit it to the root of your repository without modifications.
+Validate the constitution in the Tea app to deploy the project’s on-chain treasury.
+Publish to PyPI (Optional):
+Update pyproject.toml with your project details.
+Build and publish:
+bash
+
+Kopyala
+poetry build
+poetry publish
+Ensure the PyPI package metadata includes the project URL (https://github.com/your-username/taskcli).
+Monitor teaRank:
+Check your project’s teaRank and TEA token rewards in the Tea web app.
+Encourage community staking to boost rewards.
+Contributing
+Contributions are welcome! Please open an issue or submit a pull request on GitHub. See CONTRIBUTING.md for guidelines.
+
+License
+MIT License. See LICENSE for details.
+
+Source Code
+src/taskcli/cli.py
+python
+
+Kopyala
+import json
+import os
+import click
+
+DATA_FILE = "tasks.json"
+
+def load_tasks():
+    if not os.path.exists(DATA_FILE):
+        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
+
+def save_tasks(tasks):
+    with open(DATA_FILE, "w") as f:
+        json.dump(tasks, f, indent=2)
+
+@click.group()
+def cli():
+    """TaskCLI: A simple command-line task manager."""
+    pass
+
+@cli.command()
+@click.argument("description")
+def add(description):
+    """Add a new task."""
+    tasks = load_tasks()
+    task = {"id": len(tasks) + 1, "description": description, "completed": False}
+    tasks.append(task)
+    save_tasks(tasks)
+    click.echo(f"Task added: {description}")
+
+@cli.command()
+def list():
+    """List all tasks."""
+    tasks = load_tasks()
+    if not tasks:
+        click.echo("No tasks found.")
+        return
+    for task in tasks:
+        status = "✔" if task["completed"] else " "
+        click.echo(f"[{status}] {task['id']}: {task['description']}")
+
+@cli.command()
+@click.argument("task_id", type=int)
+def complete(task_id):
+    """Mark a task as completed."""
+    tasks = load_tasks()
+    for task in tasks:
+        if task["id"] == task_id:
+            task["completed"] = True
+            save_tasks(tasks)
+            click.echo(f"Task {task_id} marked as completed.")
+            return
+    click.echo(f"Task {task_id} not found.")
+
+@cli.command()
+@click.argument("task_id", type=int)
+def delete(task_id):
+    """Delete a task."""
+    tasks = load_tasks()
+    tasks = [task for task in tasks if task["id"] != task_id]
+    save_tasks(tasks)
+    click.echo(f"Task {task_id} deleted.")
+
+if __name__ == "__main__":
+    cli()
+tests/test_cli.py
+python
+
+Kopyala
+import json
+import os
+import pytest
+from click.testing import CliRunner
+from taskcli.cli import cli, DATA_FILE
+
+@pytest.fixture
+def runner():
+    return CliRunner()
+
+@pytest.fixture
+def setup_tasks():
+    if os.path.exists(DATA_FILE):
+        os.remove(DATA_FILE)
+    yield
+    if os.path.exists(DATA_FILE):
+        os.remove(DATA_FILE)
+
+def test_add_task(runner, setup_tasks):
+    result = runner.invoke(cli, ["add", "Test task"])
+    assert result.exit_code == 0
+    assert "Task added: Test task" in result.output
+    with open(DATA_FILE, "r") as f:
+        tasks = json.load(f)
+    assert len(tasks) == 1
+    assert tasks[0]["description"] == "Test task"
+
+def test_list_tasks(runner, setup_tasks):
+    runner.invoke(cli, ["add", "Test task"])
+    result = runner.invoke(cli, ["list"])
+    assert result.exit_code == 0
+    assert "[ ] 1: Test task" in result.output
+
+def test_complete_task(runner, setup_tasks):
+    runner.invoke(cli, ["add", "Test task"])
+    result = runner.invoke(cli, ["complete", "1"])
+    assert result.exit_code == 0
+    assert "Task 1 marked as completed" in result.output
+    with open(DATA_FILE, "r") as f:
+        tasks = json.load(f)
+    assert tasks[0]["completed"] is True
+
+def test_delete_task(runner, setup_tasks):
+    runner.invoke(cli, ["add", "Test task"])
+    result = runner.invoke(cli, ["delete", "1"])
+    assert result.exit_code == 0
+    assert "Task 1 deleted" in result.output
+    with open(DATA_FILE, "r") as f:
+        tasks = json.load(f)
+    assert len(tasks) == 0
+pyproject.toml
+toml
+
+Kopyala
+[tool.poetry]
+name = "taskcli"
+version = "0.1.0"
+description = "A simple command-line task manager"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/your-username/taskcli"
+repository = "https://github.com/your-username/taskcli"
+keywords = ["cli", "task", "productivity"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "^8.1.7"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.4.0"
+black = "^23.9.1"
+flake8 = "^6.1.0"
+
+[tool.poetry.scripts]
+taskcli = "taskcli.cli:cli"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+tea.yaml
+yaml
+
+Kopyala
+# This is a placeholder. The actual tea.yaml will be generated by the Tea Protocol web app.
+# Commit the generated file to the root of your repository without modifications.
+version: 1
+codeOwners:
+  - "0xYourTeaProtocolAddress"
+quorum: 1
+LICENSE
+text
+
+Kopyala
+MIT License
+
+Copyright (c) 2025 Your Name
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+.gitignore
+text
+
+Kopyala
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+*.json
+.pytest_cache/
+CONTRIBUTING.md
+markdown
+
+Kopyala
+# Contributing to TaskCLI
+
+Thank you for your interest in contributing to TaskCLI! We welcome contributions from the community to improve the project.
+
+## How to Contribute
+1. **Fork the Repository**: Create a fork of the repository on GitHub.
+2. **Clone Your Fork**: Clone your forked repository to your local machine.
+3. **Create a Branch**: Create a new branch for your feature or bug fix (`git checkout -b feature/your-feature`).
+4. **Make Changes**: Implement your changes, ensuring code style consistency (use Black and Flake8).
+5. **Run Tests**: Ensure all tests pass (`poetry run pytest`).
+6. **Commit Changes**: Commit your changes with a clear message (`git commit -m "Add feature X"`).
+7. **Push to GitHub**: Push your branch to your forked repository (`git push origin feature/your-feature`).
+8. **Open a Pull Request**: Submit a pull request to the main repository, describing your changes in detail.
+
+## Code Style
+- Follow PEP 8 guidelines.
+- Use Black for code formatting (`poetry run black .`).
+- Run Flake8 for linting (`poetry run flake8`).
+
+## Reporting Issues
+- Open an issue on GitHub with a clear description of the problem, steps to reproduce, and expected behavior.
+
+## Community
+Join the Tea Protocol community on [Discord](https://discord.com/invite/tea) to discuss TaskCLI and its integration with Tea.
+
+Thank you for contributing!
